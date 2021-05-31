@@ -7,7 +7,7 @@ library(dplyr)
 library(summarytools)
 library(ggplot2)
 
-setwd("C:/Users/elave/OneDrive/Escritorio/Taller Enlec")
+#setwd("C:/Users/elave/OneDrive/Escritorio/Taller Enlec")
 
 base <- read.xlsx("baseConsolidadaENLEC.xlsx")
 
@@ -20,8 +20,9 @@ base_re <- base %>%
                                 P5785 >=35 & P5785 <=44 ~ "De 35 a 44 años",
                                 P5785 >=45 & P5785 <=54 ~ "De 45 a 54 años",
                                 P5785 >=55 ~ "Mayor de 55 años"))
+base_re[is.na(base_re)] <- 1010
 
-# FRECUENCIA DE VARIABLES DE INTERÉS
+# ---- FRECUENCIA DE VARIABLES DE INTERÉS ----
 
 f_Zona <- base_re %>%
   freq(DOMINIO, report.nas = FALSE)
@@ -49,21 +50,113 @@ view(freq_Edad)
 sum(base_re$DOMINIO==1)/sum(!is.na(base_re$ID))*100 # Porcentaje Urbano
 sum(base_re$DOMINIO==2)/sum(!is.na(base_re$ID))*100 # Porcentaje Rural
 
-# ---------- Punto 3 ----------
+# -------------------- Punto 3 --------------------
 
 # Porcentaje de todos los encuestados que NO lee
-sum(!is.na(base_re$P1864S1))/sum(!is.na(base_re$ID))*100 # Digital
-sum(!is.na(base_re$P1865S1))/sum(!is.na(base_re$ID))*100 # Impreso
+sum(base_re$P1864S1!=1010)/sum(!is.na(base_re$ID))*100 # Digital
+sum(base_re$P1865S1!=1010)/sum(!is.na(base_re$ID))*100 # Impreso
 
-# ----- Digital -----
 
-razonesD <- c("Otras preferencias","Dinero","Salud","Pereza","No tiene dispositivos",
-              "Duda qué leer","Acceso a internet","No sabe usar dispositivos","Tiempo",
-              "Desinterés","Prefiere impreso","Otra")
+# ===== Lectura en soportes ... por ZONA =====
+
+base_YNLecZ <- base_re %>% 
+  select(DOMINIO,P1864S1,P1865S1) %>% 
+  group_by(DOMINIO) %>% 
+  summarise(DigSí=sum(P1864S1==1010),DigNo=sum(P1864S1!=1010),ImpSí=sum(P1865S1==1010),ImpNo=sum(P1865S1!=1010))
+
+numsYNLecZ <- c()
+for(i in 2:5){
+  numsYNLecZ <- c(numsYNLecZ,pull(base_YNLecZ,i)) # Une datos numéricos de agrupa en un solo vector
+}
+
+YNLecZ_Zona <- rep(c("Rural","Urbana"),4)
+YNLecZ_DI <- c(rep("Digital",4),rep("Impreso",4))
+YNLecZ_YN <- rep(c(rep("Sí",2),rep("No",2)),2)
+porcsYNLecZ <- numsYNLecZ/c(sum(base_re$DOMINIO==1),sum(base_re$DOMINIO==2))*100
+
+for(i in 0:3){
+  t <- porcsYNLecZ[2*i+2]
+  porcsYNLecZ[2*i+2] <- porcsYNLecZ[2*i+1]
+  porcsYNLecZ[2*i+1] <- t
+}
+
+YNLecZ_all <- data.frame(YNLecZ_Zona,YNLecZ_DI,YNLecZ_YN,numsYNLecZ,porcsYNLecZ)
+
+library(plyr)
+YNLecZ_all <- ddply(YNLecZ_all, .(YNLecZ_YN),
+                   transform, pos = cumsum(porcsYNLecZ) - (0.5 * porcsYNLecZ))
+detach("package:plyr",unload = T)
+
+YNLecZ_all[3:4,6] <-YNLecZ_all[3:4,6]-sum(YNLecZ_all[1:2,5])
+YNLecZ_all[7:8,6] <-YNLecZ_all[7:8,6]-sum(YNLecZ_all[5:6,5])
+
+
+tres_plot_YNLecZ <- ggplot(YNLecZ_all, aes(x=factor(YNLecZ_YN),y=porcsYNLecZ,
+                                          fill=factor(YNLecZ_Zona,levels=c("Urbana","Rural"))))+
+  geom_bar(stat='identity') + 
+  scale_fill_brewer(palette ="Pastel1") +
+  geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.1) +
+  geom_text(data=YNLecZ_all,aes(x=YNLecZ_YN,y=pos,label=paste0(round(porcsYNLecZ,1),"%")), size=4) +
+  labs(x="¿Leyó en soporte ... en los últimos 12 meses?",y="Frecuencia relativa por zona",
+       fill="Zona",
+       title="Lectura en soporte ... en los últimos 12 meses por zona")+
+  facet_wrap(~YNLecZ_DI)
+
+# ===== Lectura en soportes ... por EDAD =====
+
+base_YNLecE <- base_re %>% 
+  select(RangosEdad,P1864S1,P1865S1) %>% 
+  group_by(RangosEdad) %>% 
+  summarise(DigSí=sum(P1864S1==1010),DigNo=sum(P1864S1!=1010),ImpSí=sum(P1865S1==1010),ImpNo=sum(P1865S1!=1010))
+base_YNLecE <- rbind(base_YNLecE[6,],base_YNLecE[1:5,])
+
+numsYNLecE <- c()
+for(i in 2:5){
+  numsYNLecE <- c(numsYNLecE,pull(base_YNLecE,i)) # Une datos numéricos de agrupa en un solo vector
+}
+
+YNLecE_Edades <- rep(c("Menor de 18 años","De 18 a 24 años","De 25 a 34 años","De 35 a 44 años","De 45 a 54 años",
+                     "Mayor de 55 años"),4)
+YNLecE_DI <- c(rep("Digital",12),rep("Impreso",12))
+YNLecE_YN <- rep(c(rep("Sí",6),rep("No",6)),2)
+pobsEdad <- c(sum(base_re$RangosEdad=="Menor de 18 años"),sum(base_re$RangosEdad=="De 18 a 24 años"),
+              sum(base_re$RangosEdad=="De 25 a 34 años"),sum(base_re$RangosEdad=="De 35 a 44 años"),
+              sum(base_re$RangosEdad=="De 45 a 54 años"),sum(base_re$RangosEdad=="Mayor de 55 años"))
+porcsYNLecE <- numsYNLecE/pobsEdad*100
+
+YNLecE_all <- data.frame(YNLecE_Edades,YNLecE_DI,YNLecE_YN,numsYNLecE,porcsYNLecE)
+
+library(plyr)
+YNLecE_all <- ddply(YNLecE_all, .(YNLecE_YN),
+                    transform, pos = cumsum(porcsYNLecE) - (0.5 * porcsYNLecE))
+detach("package:plyr",unload = T)
+
+YNLecE_all[7:12,6] <-YNLecE_all[7:12,6]-sum(YNLecE_all[1:6,5])
+YNLecE_all[19:24,6] <-YNLecE_all[19:24,6]-sum(YNLecE_all[13:18,5])
+
+tres_plot_YNLecE <- ggplot(YNLecE_all, aes(x=factor(YNLecE_YN),y=porcsYNLecE,
+                       fill=factor(YNLecE_Edades,levels=rev(c("Menor de 18 años","De 18 a 24 años",
+                      "De 25 a 34 años","De 35 a 44 años","De 45 a 54 años","Mayor de 55 años")))))+
+  geom_bar(stat='identity') + 
+  scale_fill_brewer(palette ="Set3",direction=-1) +
+  geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.1) +
+  geom_text(data=YNLecE_all,aes(x=YNLecE_YN,y=pos,label=ifelse(porcsYNLecE>=33,paste0(round(porcsYNLecE,1),"%"),"")), size=3.5) +
+  labs(x="¿Leyó en soporte ... en los últimos 12 meses?",y="Porcentaje relativo por rango de edad",
+       fill="Rango de Edad",
+       title="Lectura en soporte ... en los últimos 12 meses por edad")+
+  facet_wrap(~YNLecE_DI)
+
+# ===== DIGITAL =====
+
+# ##### Por EDAD #####
 
 base_RazNoLecDig <- base_re %>%
   filter(!is.na(P1864S1)) %>% 
   select(RangosEdad,DOMINIO,P260,P4031S1A1,30,34:41,31:33) # Filtra personas que respondieron P1864
+
+razonesD <- c("Otras preferencias","Dinero","Salud","Pereza","No tiene dispositivos",
+              "Duda qué leer","Acceso a internet","No sabe usar dispositivos","Tiempo",
+              "Desinterés","Prefiere impreso","Otra")
 
 names(base_RazNoLecDig)[5:16] <- razonesD # Cambia nombres de las razones
 
@@ -74,6 +167,7 @@ agrupaD <- base_RazNoLecDig %>% # Cuenta frecuencia de los rangos de edad en las
             Duda = sum(`Duda qué leer`==1), Internet = sum(`Acceso a internet`==1),
             Uso = sum(`No sabe usar dispositivos`==1),Tiempo = sum(Tiempo==1),
             Desinteres=sum(Desinterés==1),Impreso=sum(`Prefiere impreso`==1),Otra=sum(Otra==1)) # colSums()?
+agrupaD <- rbind(agrupaD[6,],agrupaD[1:5,])
 
 razonesD_ <- c(rep("Otras preferencias",6),rep("Dinero",6),rep("Salud",6),rep("Pereza",6),
                rep("No tiene dispositivos",6),rep("Duda qué leer",6),rep("Acceso a internet",6),
@@ -85,7 +179,9 @@ for(i in 2:13){
   numsD <- c(numsD,pull(agrupaD,i)) # Une datos numéricos de agrupa en un solo vector
 }
 
-tres_Dig <- data.frame(razonesD_,agrupaD[1],numsD) # Dataframe con los datos necesarios para barras apiladas
+porcsD <- numsD/pobsEdad*100
+
+tres_Dig <- data.frame(razonesD_,agrupaD[1],numsD,porcsD) # Dataframe con los datos necesarios para barras apiladas
 
 tres_plot_Dig <- ggplot(tres_Dig, aes(fill=factor(RangosEdad,
                                                   levels = c("Menor de 18 años","De 18 a 24 años",
@@ -99,13 +195,25 @@ tres_plot_Dig <- ggplot(tres_Dig, aes(fill=factor(RangosEdad,
   labs(x="Razón por la que no lee digital",y="Frecuencia",fill="Rango de Edad",
        title="Razones Digital") # Barras apiladas
 
+tres_plot_DigPorcs <- ggplot(tres_Dig, aes(fill=factor(RangosEdad,
+                                                  levels = c("Menor de 18 años","De 18 a 24 años",
+                                                             "De 25 a 34 años","De 35 a 44 años",
+                                                             "De 45 a 54 años","Mayor de 55 años")),
+                                      y=porcsD, x=reorder(razonesD_,porcsD))) + 
+  geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.25) +
+  coord_flip()+
+  scale_fill_brewer(palette ="Set3") +
+  #scale_fill_manual(values=wes_palette("Royal2"))
+  labs(x="Razón por la que no lee digital",y="Porcentaje relativo por rango de edad",fill="Rango de Edad",
+       title="Razones Digital")
+
 
 # Tendencia con la edad, más viejo/joven -> menos digital
 
 tres_Dig_f_Edad_ <- base_RazNoLecDig %>% 
   freq(RangosEdad,report.nas=FALSE)
 
-# Zona.
+# ##### Por ZONA #####
 
 agrupaDZ <- base_RazNoLecDig %>% # Cuenta frecuencia de las zonas en las razones
   group_by(DOMINIO) %>%
@@ -157,14 +265,17 @@ sum(base_RazNoLecDig$DOMINIO==2)/sum(base_re$DOMINIO==2)*100 # Rural
 
 
 
-# ----- Impreso -----
+# ===== IMPRESO =====
 
-razonesI <- c("Otras preferencias","Tiempo","Desinterés","Pereza","Dinero","Duda qué leer",
-              "Salud","Acceso a material","Prefiere digital","Otra")
+
+# ##### Por EDAD #####
 
 base_RazNoLecImp <- base_re %>%
   filter(!is.na(P1865S1)) %>% 
   select(RangosEdad,DOMINIO,P260,P4031S1A1,42,44:51,43)
+
+razonesI <- c("Otras preferencias","Tiempo","Desinterés","Pereza","Dinero","Duda qué leer",
+              "Salud","Acceso a material","Prefiere digital","Otra")
 
 names(base_RazNoLecImp)[5:14] <- razonesI # Cambia nombres de las razones
 
@@ -174,6 +285,7 @@ agrupaI <- base_RazNoLecImp %>% # Cuenta frecuencia de los rangos de edad en las
             Desinteres=sum(Desinterés==1),Pereza=sum(Pereza==1),Dinero = sum(Dinero==1),
             Duda=sum(`Duda qué leer`==1),Salud=sum(Salud==1),Acceso=sum(`Acceso a material`==1),
             Digital=sum(`Prefiere digital`==1),Otra=sum(Otra==1))
+agrupaI <- rbind(agrupaI[6,],agrupaI[1:5,])
 
 razonesI_ <- c(rep("Otras preferencias",6),rep("Tiempo",6),rep("Desinterés",6),rep("Pereza",6),
                rep("Dinero",6),rep("Duda qué leer",6),rep("Salud",6),
@@ -184,7 +296,9 @@ for(i in 2:11){
   numsI <- c(numsI,pull(agrupaI,i)) # Une datos numéricos de agrupa en un solo vector
 }
 
-tres_Imp <- data.frame(razonesI_,agrupaI[1],numsI) # Dataframe con los datos necesarios para barras apiladas
+porcsI <- numsI/pobsEdad*100
+
+tres_Imp <- data.frame(razonesI_,agrupaI[1],numsI,porcsI) # Dataframe con los datos necesarios para barras apiladas
 
 tres_plot_Imp <- ggplot(tres_Imp, aes(fill=factor(RangosEdad,
                                                   levels = c("Menor de 18 años","De 18 a 24 años",
@@ -198,6 +312,18 @@ tres_plot_Imp <- ggplot(tres_Imp, aes(fill=factor(RangosEdad,
   labs(x="Razón por la que no lee impreso",y="Frecuencia",fill="Rango de Edad",
        title="Razones Impreso") # Barras apiladas
 
+tres_plot_ImpPorcs <- ggplot(tres_Imp, aes(fill=factor(RangosEdad,
+                                                  levels = c("Menor de 18 años","De 18 a 24 años",
+                                                             "De 25 a 34 años","De 35 a 44 años",
+                                                             "De 45 a 54 años","Mayor de 55 años")),
+                                      y=porcsI, x=reorder(razonesI_,porcsI))) + 
+  geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.25) +
+  coord_flip()+
+  scale_fill_brewer(palette ="Set3") +
+  #scale_fill_manual(values=wes_palette("Royal2"))
+  labs(x="Razón por la que no lee impreso",y="Porcentaje relativo por rango de edad",fill="Rango de Edad",
+       title="Razones Impreso") # Barras apiladas
+
 # Frecuencia edad
 
 tres_Imp_f_Edad_ <- base_RazNoLecImp %>% 
@@ -206,7 +332,7 @@ tres_Imp_f_Edad_ <- base_RazNoLecImp %>%
 view(tres_Imp_f_Edad_)  
 
 
-# Zona.
+# ##### Por ZONA #####
 
 agrupaIZ <- base_RazNoLecImp %>% # Cuenta frecuencia de las zonas en las razones
   group_by(DOMINIO) %>%
@@ -255,7 +381,7 @@ sum(base_RazNoLecImp$DOMINIO==1)/sum(base_re$DOMINIO==1)*100 # Urbana
 sum(base_RazNoLecImp$DOMINIO==2)/sum(base_re$DOMINIO==2)*100 # Rural
 
 
-# ---------- Punto 4 ----------
+# -------------------- Punto 4 --------------------
 
 base_NiñezEdu <- base_re %>% # Selecciona variables necesarias, excluye <18 por su educación
   filter(RangosEdad!="Menor de 18 años") %>% 
@@ -268,7 +394,7 @@ cuat_noms <- c("Educación","Estrato","Iba a bibliotecas",
 
 names(base_NiñezEdu)[4:11] <- cuat_noms # Cambia nombres de columnas
 
-# Análisis de una pregunta: ¿Veía a familiares leer?
+# ===== Análisis de una pregunta: ¿Veía a familiares leer? =====
 
 cuat_p1 <- base_NiñezEdu %>% 
   group_by(Educación) %>% 
@@ -301,7 +427,9 @@ cuat_plot_p1 <- ggplot(cuat_p1a, aes(fill=factor(yn),
 # Se esperaría más sí's en niveles más altos, y más no's en más bajos, sin embargo tendencia no muy clara
 
 
-# Puntajes. Se crea un puntaje con todas las preguntas, en vez de analizar cada una por aparte. Puntaje resume el entorno en la infancia.
+# ===== Por PUNTAJES =====
+# Se crea un puntaje con todas las preguntas, en vez de analizar cada una por aparte. 
+# Puntaje resume el entorno en la infancia.
 
 cuat_punts <- base_NiñezEdu %>% # Crea puntaje para cada persona
   group_by(ID) %>%
@@ -330,20 +458,21 @@ NivsEdu <- c(rep("Ninguna",7),rep("Preescolar",7),rep("Básica primaria",7),
 
 cuat_all <- data.frame(punts,NivsEdu,numsEdu) # une los puntajes, nivs, y sus correspondientes números
 
-cuat_plot <- ggplot(cuat_all, aes(fill=factor(punts),
+cuat_plot <- ggplot(cuat_all, aes(fill=factor(punts,levels=6:0),
             y=numsEdu, x=factor(NivsEdu,
             levels = c("Ninguna","Preescolar","Básica primaria","Básica secundaria",
              "Media académica","Media técnica","Normalista","Técnica","Tecnológica",
              "Universitario","Especialización","Maestría","Doctorado")))) + 
-  geom_bar(position=position_stack(reverse=T), stat="identity", colour="black",size=.1) +
-  scale_fill_brewer(palette ="RdYlGn") +
+  geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.1) +
+  scale_fill_brewer(palette ="RdYlGn",direction=-1) +
   coord_flip()+
   #scale_fill_manual(values=wes_palette("Royal2"))
   labs(x="Máximo nivel educativo alcanzado",y="Frecuencia",
        fill=stringr::str_wrap("Puntaje de lectura en la infancia",12),
        title="Lectura en infancia y máximo nivel educativo") # Barras apiladas
 
-# ZONA. Máximo nivel educativo por zona. No número de personas, sino fracción representativa de cada zona.
+# ===== Por ZONA =====
+#Máximo nivel educativo por zona.
 
 cuat_NivZona <- base_NiñezEdu %>% 
   group_by(DOMINIO) %>% 
@@ -398,23 +527,19 @@ cuat_NZ_plot <- ggplot(cuat_NZ_all, aes(fill=factor(doms,
 
 
 
-#colours = c( "#A54657",  "#582630", "#F7EE7F", "#4DAA57","#F1A66A","#F26157", "#F9ECCC", "#679289", "#33658A","#F6AE2D","#86BBD8")
-
-
-
 # ---------- Punto 5 ----------
 
-# 1 Pregunta, REDES SOCIALES
-#1044 excluidos por estrato 0 o 9
-
 base_TiLecEst <- base_re %>% 
-  filter(!is.na(P4031S1A1) & P4031S1A1!=0 & P4031S1A1!=9) %>%
+  filter(!is.na(P4031S1A1) & P4031S1A1!=0 & P4031S1A1!=9) %>% #1044 excluidos por estrato 0 o 9
   select(P5785,P4031S1A1,P1855S2A1,P1860S2A1,P1862S2A1,P1852S2A1,P1851S2A1)
 
 base_TiLecEst[is.na(base_TiLecEst)] <- 0
 
 colnames(base_TiLecEst) <- c("Rango de Edad","Estrato","Redes sociales","Periódicos impresos",
-               "Documentos académicos impresos","Documentos académicos digitales","Páginas web")
+                             "Documentos académicos impresos","Documentos académicos digitales","Páginas web")
+
+
+# ===== 1 Pregunta, REDES SOCIALES, TIEMPO/ESTRATO =====
 
 cinco_P1 <- base_TiLecEst %>% 
   group_by(Estrato) %>% 
@@ -424,9 +549,9 @@ cinco_P1 <- base_TiLecEst %>%
             `6 a 7 horas`=sum(`Redes sociales`==7),`8 a 10 horas`=sum(`Redes sociales`==8),
             `Más de 10 horas`=sum(`Redes sociales`==9),`No sabe / No informa`=sum(`Redes sociales`==99))
 
-numsTiLecEst <- c()
+numsTiLecEst1 <- c()
 for(i in 2:11){
-  numsTiLecEst <- c(numsTiLecEst,pull(cinco_P1,i)) # Une datos numéricos de nivs de educ en un solo vector
+  numsTiLecEst1 <- c(numsTiLecEst1,pull(cinco_P1,i)) # Une datos numéricos de nivs de educ en un solo vector
 }
 
 p <- c()
@@ -434,33 +559,110 @@ for(i in 1:6){
   p = c(p,sum(base_re$P4031S1A1==i))
 }
 
-pobs <- rep(p,10)
+pobsEstrato1 <- rep(p,10)
 
-porcsTiLecEst <- numsTiLecEst/pobs
+porcsTiLecEst1 <- numsTiLecEst1/pobsEstrato1
 
 Tiempo <- c(rep("Menos de una hora",6),rep("1 hora",6),rep("2 horas",6),rep("3 horas",6),
             rep("4 horas",6),rep("5 horas",6),rep("6 a 7 horas",6),rep("8 a 10 horas",6),
             rep("Más de 10 horas",6),rep("No sabe / No informa",6))
 Estratos<-rep(1:6,10)
 
-cinco_P1_all <- data.frame(Estratos,Tiempo,porcsTiLecEst)
+cinco_P1_all <- data.frame(Estratos,Tiempo,numsTiLecEst1,porcsTiLecEst1)
+
 
 cinco_plot_P1 <- ggplot(cinco_P1_all, aes(fill=factor(Tiempo,
+              levels = c("No sabe / No informa","Más de 10 horas","8 a 10 horas","6 a 7 horas","5 horas",
+                         "4 horas","3 horas","2 horas","1 hora","Menos de una hora")),
+  y=numsTiLecEst1, x=factor(Estratos))) + 
+  geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.1) +
+  scale_fill_brewer(palette ="RdYlGn") +
+  labs(x="Estrato",y="Frecuencia",
+       fill=stringr::str_wrap("Tiempo semanal de lectura de redes sociales",21),
+       title="Lectura de redes sociales y estrato") # Frecuencia
+
+
+cinco_plot_P1_porcs <- ggplot(cinco_P1_all, aes(fill=factor(Tiempo,
   levels = c("No sabe / No informa","Más de 10 horas","8 a 10 horas","6 a 7 horas","5 horas",
              "4 horas","3 horas","2 horas","1 hora","Menos de una hora")),
                   y=porcsTiLecEst, x=factor(Estratos))) + 
   geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.1) +
   scale_fill_brewer(palette ="RdYlGn") +
-  #coord_flip()+
-  #scale_fill_manual(values=wes_palette("Royal2"))
   labs(x="Estrato",y="Frecuencia",
        fill=stringr::str_wrap("Tiempo semanal de lectura de redes sociales",21),
-       title="Lectura de redes sociales y estrato") # Barras apiladas
+       title="Lectura de redes sociales y estrato") # Frecuencia relativa
 
-# Otras 5 preguntas también? Función?
-# facet_wrap de las 5?
+# ===== 5 preguntas, TIEMPO/ESTRATO =====
 
-# 6 Preguntas, sí-no, estratos
+cinco_P2 <- base_TiLecEst %>%
+  group_by(Estrato) %>% 
+  summarise(`Menos de una hora`=sum(`Periódicos impresos`==1),`1 hora`=sum(`Periódicos impresos`==2),
+            `2 horas`=sum(`Periódicos impresos`==3),`3 horas`=sum(`Periódicos impresos`==4),
+            `4 horas`=sum(`Periódicos impresos`==5),`5 horas`=sum(`Periódicos impresos`==6),
+            `6 a 7 horas`=sum(`Periódicos impresos`==7),`8 a 10 horas`=sum(`Periódicos impresos`==8),
+            `Más de 10 horas`=sum(`Periódicos impresos`==9),`No sabe / No informa`=sum(`Periódicos impresos`==99))
+
+cinco_P3 <- base_TiLecEst %>% 
+  group_by(Estrato) %>% 
+  summarise(`Menos de una hora`=sum(`Documentos académicos impresos`==1),`1 hora`=sum(`Documentos académicos impresos`==2),
+            `2 horas`=sum(`Documentos académicos impresos`==3),`3 horas`=sum(`Documentos académicos impresos`==4),
+            `4 horas`=sum(`Documentos académicos impresos`==5),`5 horas`=sum(`Documentos académicos impresos`==6),
+            `6 a 7 horas`=sum(`Documentos académicos impresos`==7),`8 a 10 horas`=sum(`Documentos académicos impresos`==8),
+            `Más de 10 horas`=sum(`Documentos académicos impresos`==9),`No sabe / No informa`=sum(`Documentos académicos impresos`==99))
+
+cinco_P4 <- base_TiLecEst %>% 
+  group_by(Estrato) %>% 
+  summarise(`Menos de una hora`=sum(`Documentos académicos digitales`==1),`1 hora`=sum(`Documentos académicos digitales`==2),
+            `2 horas`=sum(`Documentos académicos digitales`==3),`3 horas`=sum(`Documentos académicos digitales`==4),
+            `4 horas`=sum(`Documentos académicos digitales`==5),`5 horas`=sum(`Documentos académicos digitales`==6),
+            `6 a 7 horas`=sum(`Documentos académicos digitales`==7),`8 a 10 horas`=sum(`Documentos académicos digitales`==8),
+            `Más de 10 horas`=sum(`Documentos académicos digitales`==9),`No sabe / No informa`=sum(`Documentos académicos digitales`==99))
+
+cinco_P5 <- base_TiLecEst %>% 
+  group_by(Estrato) %>% 
+  summarise(`Menos de una hora`=sum(`Páginas web`==1),`1 hora`=sum(`Páginas web`==2),
+            `2 horas`=sum(`Páginas web`==3),`3 horas`=sum(`Páginas web`==4),
+            `4 horas`=sum(`Páginas web`==5),`5 horas`=sum(`Páginas web`==6),
+            `6 a 7 horas`=sum(`Páginas web`==7),`8 a 10 horas`=sum(`Páginas web`==8),
+            `Más de 10 horas`=sum(`Páginas web`==9),`No sabe / No informa`=sum(`Páginas web`==99))
+
+cinco_PsDF <- data.frame(cinco_P1[2:11],cinco_P2[2:11],cinco_P3[2:11],cinco_P4[2:11],cinco_P5[2:11])
+
+numsTiLecEstPs <-c()
+for(i in 1:50){
+  numsTiLecEstPs <- c(numsTiLecEstPs,pull(cinco_PsDF,i)) 
+}
+
+pobsEstrato <- rep(p,50)
+
+porcsTiLecEstPs <- numsTiLecEstPs/pobsEstrato
+
+horas <- rep(c(rep("Menos de una hora",6),rep("1 hora",6),rep("2 horas",6),rep("3 horas",6),
+           rep("4 horas",6),rep("5 horas",6),rep("6 a 7 horas",6),rep("8 a 10 horas",6),
+           rep("Más de 10 horas",6),rep("No sabe / No informa",6)),5)
+
+pregs <- c(rep("Redes sociales",60),rep("Periódicos impresos",60),
+           rep("Documentos académicos impresos",60),rep("Documentos académicos digitales",60),
+           rep("Páginas web",60))
+
+ests <- rep(1:6,50)
+
+cinco_Ps_all <- data.frame(horas,pregs,ests,numsTiLecEstPs,porcsTiLecEstPs)
+
+cinco_plot_Ps <- ggplot(cinco_Ps_all, aes(x=factor(ests,levels=1:6),y=porcsTiLecEstPs,
+              fill=factor(horas,levels = c("No sabe / No informa",
+             "Más de 10 horas","8 a 10 horas","6 a 7 horas","5 horas",
+            "4 horas","3 horas","2 horas","1 hora","Menos de una hora")))) + 
+  geom_bar(stat='identity') +
+  scale_fill_brewer(palette ="RdYlGn") +
+  geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.1) +
+  labs(x="Estrato",y="Frecuencia relativa por estrato",
+       fill=stringr::str_wrap("Tiempo semanal de lectura de redes sociales",21),
+       title="Tiempo de lectura de ... en los últimos 12 meses por estrato")+
+  facet_wrap(~pregs)
+
+
+# ===== 5 Preguntas, SíNo/ESTRATO =====
 
 cinco_YNEst <- base_TiLecEst %>% 
   group_by(Estrato) %>% 
@@ -480,21 +682,18 @@ YNpregs <- c(rep("Redes sociales",12),rep("Periódicos impresos",12),
              rep("Páginas web",12))
 YN <- rep(c(rep("Sí",6),rep("No",6)),5)
 
-cinco_YNEst_all <- data.frame(YNEs,YNpregs,YN,YNnums)
+YNPorcs <- YNnums/pobs
+
+cinco_YNEst_all <- data.frame(YNEs,YNpregs,YN,YNnums,YNPorcs)
 
 cinco_plot_YNEst <- ggplot(cinco_YNEst_all, aes(x=YN,y=YNnums,fill=factor(YNEs,levels=c(6:1)))) + 
-  geom_bar(stat='identity') + 
-  #scale_fill_brewer(palette ="Set3",direction=-1) +
+  geom_bar(stat='identity') +
   scale_fill_manual(values=c("#4575B4","#74ADD1", "#ABD9E9", "#A6D96A","#66BD63","#1A9850"))+
   geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.1) +
   labs(x="¿Ha leído ... en los últimos 12 meses?",y="Frecuencia",
        fill="Estrato",title="Lectura en los últimos 12 meses por estrato")+
   facet_wrap(~YNpregs)
   #theme(panel.background = element_rect(fill = "white"))
-
-YNPorcs <- YNnums/pobs
-
-cinco_YNEst_all <- data.frame(cinco_YNEst_all,YNPorcs)
 
 cinco_plot_YNEstPorc <- ggplot(cinco_YNEst_all, aes(x=YN,y=YNPorcs,fill=factor(YNEs,levels=c(6:1)))) + 
   geom_bar(stat='identity') + 
@@ -508,7 +707,6 @@ cinco_plot_YNEstPorc <- ggplot(cinco_YNEst_all, aes(x=YN,y=YNPorcs,fill=factor(Y
 
 
 
-#base_re[is.na(base_re)] <- 1010
 
 
 
@@ -517,4 +715,9 @@ cinco_plot_YNEstPorc <- ggplot(cinco_YNEst_all, aes(x=YN,y=YNPorcs,fill=factor(Y
 
 
 
+
+
+
+# -------------------- Punto 6 --------------------
+# How's boxplots? 
 
