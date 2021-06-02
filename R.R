@@ -2,6 +2,7 @@ rm(list = ls())
 
 library(wesanderson)
 library(hrbrthemes)
+library(RColorBrewer)
 library(openxlsx)
 library(dplyr)
 library(summarytools)
@@ -1073,16 +1074,37 @@ ggplot(seis_IvD, aes(x=DI,y=nums)) +
   
 base_LecFrec <- base_re %>% 
   filter(P5381!=1010,P4031S1A1!=1010&P4031S1A1!=0&P4031S1A1!=9) %>% 
-  select(P1858S1,P5380S1)
-    
-    
-    
-    
-    
-    
-    
-    
-    
+  select(Digital=P1858S1,Impreso=P5380S1)
+  
+LecFrecD <- base_LecFrec %>% 
+  group_by(Digital) %>% 
+  summarise(ND=sum(Digital==Digital))
+LecFrecI <- base_LecFrec %>% 
+  group_by(Impreso) %>% 
+  summarise(NI=sum(Impreso==Impreso))
+
+numsD <- pull(LecFrecD,2)[1:6]
+numsI <- pull(LecFrecI,2)[1:6]
+porcsD <- numsD/sum(base_LecFrec$Digital!=1010)*100
+porcsI <- numsI/sum(base_LecFrec$Impreso!=1010)*100
+
+frec <- c("Todos los días","Varias veces por semana","Una vez por semana","Una vez al mes",
+          "Una vez cada 3 meses","Una vez al año")
+
+siete_LecFrec <- data.frame(Formato=c(rep("Digital",6),rep("Impreso",6)),frec,nums=c(numsD,numsI),
+                  porcs=c(porcsD,porcsI))
+
+ggplot(siete_LecFrec, aes(x=reorder(frec,porcs),y=porcs,label=ifelse(porcs>4.2,paste0(round(porcs,1),"%"),"")))+
+  theme_bw()+
+  geom_bar( stat="identity", colour="black",size=.3,fill=rep(brewer.pal(6,"Pastel1"),2)) +
+  geom_text(size=4,position=position_stack(vjust=0.5))+
+  scale_x_discrete(limits=frec,labels = function(frec) stringr::str_wrap(frec,12))+
+  coord_flip()+
+  labs(x="¿Con qué frecuencia leyó libros en formato ...?",y="Porcentaje del total")+
+  facet_wrap(~Formato,scales = "free_x")
+
+
+
     
     
   
