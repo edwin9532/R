@@ -8,6 +8,10 @@ library(dplyr)
 library(summarytools)
 library(ggplot2)
 
+theme_set(theme_linedraw())
+theme_update(panel.grid.major=element_line(colour="#808080"),panel.grid.minor=element_line(colour="gray"),panel.background=element_rect(fill=("#fff4e6")))
+w <-"white"
+
 #setwd("C:/Users/elave/OneDrive/Escritorio/Taller Enlec")
 
 base <- read.xlsx("baseConsolidadaENLEC.xlsx")
@@ -97,11 +101,11 @@ detach("package:plyr",unload = T)
 YNLecZ_all[3:4,6] <-YNLecZ_all[3:4,6]-sum(YNLecZ_all[1:2,5])
 YNLecZ_all[7:8,6] <-YNLecZ_all[7:8,6]-sum(YNLecZ_all[5:6,5])
 
-
+display.brewer.pal(11,"Pastel1")
+brewer.pal(9,"Pastel1")
 tres_plot_YNLecZ <- ggplot(YNLecZ_all, aes(x=factor(YN),y=porcs,
                                           fill=factor(Fill,levels=c("Urbana","Rural"))))+
   geom_bar(stat='identity') + 
-  scale_fill_brewer(palette ="Pastel1") +
   geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.1) +
   geom_text(data=YNLecZ_all,aes(x=YN,y=pos,label=paste0(round(porcs,1),"%")), size=4) +
   labs(x="¿Leyó en soporte ... en los últimos 12 meses?",y="Frecuencia relativa por zona",
@@ -152,7 +156,6 @@ tres_plot_YNLecE <- ggplot(YNLecE_all, aes(x=factor(YN),y=porcs,
                        fill=factor(Fill,levels=rev(c("Menor de 18 años","De 18 a 24 años",
                       "De 25 a 34 años","De 35 a 44 años","De 45 a 54 años","Mayor de 55 años")))))+
   geom_bar(stat='identity') +
-  theme_bw()+
   scale_fill_brewer(palette ="Set3",direction=-1) +
   geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.1) +
   geom_text(data=YNLecE_all,aes(x=YN,y=pos,label=ifelse(porcs>=33,paste0(round(porcs,1),"%"),"")), size=3.5) +
@@ -163,7 +166,7 @@ tres_plot_YNLecE <- ggplot(YNLecE_all, aes(x=factor(YN),y=porcs,
 
 # ===== ZONA y EDAD =====
 
-cat <- c(rep("Zona",count(seis_YN_Z_all)),rep("Rango de edad",count(seis_YN_E_all)))
+cat <- c(rep("Zona",count(YNLecZ_all)),rep("Rango de edad",count(YNLecE_all)))
 
 YNLec_all <- data.frame(cat,rbind(YNLecZ_all,YNLecE_all))
 
@@ -180,7 +183,6 @@ ggplot(YNLec_all, aes(x=YN,y=porcs,fill=factor(Fill,levels=c("Rango de edad",
   theme(legend.position="right", 
         legend.key = element_rect(fill=NA),
         legend.title=element_blank())+
-  theme_bw()+
   labs(x="¿Leyó en soporte ... en los últimos 12 meses?",y="Porcentaje del total de cada categoría",fill="")+
   facet_grid(cat~DI,scales="free")
 
@@ -810,7 +812,6 @@ numsYN_DI <-c(seis_YN[,1],seis_YN[,2])
 seis_YN <- data.frame(ID=c(rep("Impreso",2),rep("Digital",2)),YN=rep(c("Sí","No"),2),numsYN_DI,porcs=numsYN_DI/count(base_LibsLe)[1,1]*100)
 
 seis_plot_YN_ID <- ggplot(seis_YN, aes(x=YN,y=porcs,label=paste0(round(porcs,1),"%")))+
-  theme_bw()+
   geom_bar( stat="identity", colour="black",size=.3,fill=c("#B3CDE3","#FBB4AE","#B3CDE3","#FBB4AE")) +
   geom_text(size=4,position=position_stack(vjust=0.5))+
   labs(x="¿Ha leído libros en formato ... en los últimos 12 meses?",y="Porcentaje del total")+
@@ -894,7 +895,7 @@ cat <- c(rep("Zona",count(seis_YN_Z_all)),rep("Rango de edad",count(seis_YN_E_al
 
 seis_YN_all <- data.frame(cat,rbind(seis_YN_Z_all,seis_YN_E_all,seis_YN_Es_all))
 
-w <-"white"
+
 #seis_plot_YN <-
 
 ggplot(seis_YN_all, aes(x=YN,y=porcs,fill=factor(Fill,levels=c("Estrato",c(6:1),"","Rango de edad",
@@ -910,7 +911,6 @@ ggplot(seis_YN_all, aes(x=YN,y=porcs,fill=factor(Fill,levels=c("Estrato",c(6:1),
   theme(legend.position="right", 
         legend.key = element_rect(fill=NA),
         legend.title=element_blank())+
-  theme_bw()+
   labs(x="¿Ha leído libros en formato ... en los últimos 12 meses?",y="Porcentaje del total de cada categoría",
        fill="")+
   facet_grid(cat~DI,scales="free")
@@ -999,10 +999,7 @@ cat <- c(rep("Zona",count(seis_YN_Z_all)),rep("Rango de edad",count(seis_YN_E_al
 
 seis_YN_all <- data.frame(cat,rbind(seis_YN_Z_all,seis_YN_E_all,seis_YN_Es_all))
 
-w <-"white"
-#seis_plot_YN <-
-
-ggplot(seis_YN_all, aes(x=YN,y=porcs,fill=factor(Fill,levels=c("Estrato",c(6:1),"","Rango de edad",
+seis_plot_YN <-ggplot(seis_YN_all, aes(x=YN,y=porcs,fill=factor(Fill,levels=c("Estrato",c(6:1),"","Rango de edad",
                                                                rev(c("Menor de 18 años","De 18 a 24 años","De 25 a 34 años","De 35 a 44 años",
                                                                      "De 45 a 54 años","Mayor de 55 años"))," ","Zona",c("Urbana","Rural"),
                                                                "  ","   ","    ","     ")),label=ifelse(porcs>=44.5,paste0(round(porcs,1),"%"),""))) +
@@ -1015,7 +1012,6 @@ ggplot(seis_YN_all, aes(x=YN,y=porcs,fill=factor(Fill,levels=c("Estrato",c(6:1),
   theme(legend.position="right", 
         legend.key = element_rect(fill=NA),
         legend.title=element_blank())+
-  theme_bw()+
   labs(x="¿Ha leído libros en formato ... en los últimos 12 meses?",y="Porcentaje del total de cada categoría",
        fill="")+
   facet_grid(cat~DI,scales="free")
@@ -1039,7 +1035,6 @@ ggplot(seis_IvD, aes(x=DI,y=nums,fill=DI)) +
   geom_boxplot(width=.5, color="gray") +
   scale_fill_viridis(discrete = TRUE) +
   theme(plot.title = element_text(size=11)) +
-  theme_bw()+
   ggtitle("A Violin wrapping a boxplot") +
   coord_cartesian(ylim = c(-1, 12))+
   facet_wrap(~DI,scales = "free")
@@ -1094,8 +1089,7 @@ frec <- c("Todos los días","Varias veces por semana","Una vez por semana","Una 
 siete_LecFrec <- data.frame(Formato=c(rep("Digital",6),rep("Impreso",6)),frec,nums=c(numsD,numsI),
                   porcs=c(porcsD,porcsI))
 
-ggplot(siete_LecFrec, aes(x=reorder(frec,porcs),y=porcs,label=ifelse(porcs>4.2,paste0(round(porcs,1),"%"),"")))+
-  theme_bw()+
+siete_plot <- ggplot(siete_LecFrec, aes(x=reorder(frec,porcs),y=porcs,label=ifelse(porcs>4.2,paste0(round(porcs,1),"%"),"")))+
   geom_bar( stat="identity", colour="black",size=.3,fill=rep(brewer.pal(6,"Pastel1"),2)) +
   geom_text(size=4,position=position_stack(vjust=0.5))+
   scale_x_discrete(limits=frec,labels = function(frec) stringr::str_wrap(frec,12))+
