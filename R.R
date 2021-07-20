@@ -43,19 +43,24 @@ f_Sexo <- base_re %>%
 f_Edad <- base_re %>%
   freq(RangosEdad, report.nas = FALSE)
 
+f_Est <- base_re %>%
+  filter(P4031S1A1!=0&P4031S1A1!=1010&P4031S1A1!=9) %>% 
+  freq(P4031S1A1, report.nas = FALSE)
+
 f_Educ <- base_re %>%
+  filter(RangosEdad!="Menor de 18 años") %>% 
   freq(P260, report.nas = FALSE)
 
-f_EstCiv <- base_re %>%
-  freq(P6070, report.nas = FALSE)
+#f_EstCiv <- base_re %>%
+#  freq(P6070, report.nas = FALSE)
 
-f_Etnia <- base_re %>%
-  freq(P5465, report.nas = FALSE)
+#f_Etnia <- base_re %>%
+#  freq(P5465, report.nas = FALSE)
 
-f_LecDig <- base_re %>%
-  freq(P1855, report.nas = FALSE)
+#f_LecDig <- base_re %>%
+#  freq(P1855, report.nas = FALSE)
 
-view(freq_Edad)
+view(f_Est)
 
 sum(base_re$DOMINIO==1)/sum(!is.na(base_re$ID))*100 # Porcentaje Urbano
 sum(base_re$DOMINIO==2)/sum(!is.na(base_re$ID))*100 # Porcentaje Rural
@@ -583,6 +588,54 @@ cuat_NZ_plot <- ggplot(cuat_NZ_all, aes(fill=factor(doms,
   #scale_fill_manual(values=wes_palette("Royal2"))
   labs(x="Máximo nivel educativo alcanzado",y="Porcentaje del total de esa zona",
        fill=stringr::str_wrap("Zona",12))
+
+
+# ===== Por EDAD =====
+#Máximo nivel educativo por edad.
+
+
+cuat_NivEdad <- base_NiñezEdu %>% 
+  group_by(RangosEdad) %>% 
+  summarise(Ninguna=sum(Educación==0),Preescolar=sum(Educación==1),`Básica primaria`=sum(Educación==2),
+            `Básica secundaria`=sum(Educación==3),`Media académica`=sum(Educación==4),
+            `Media técnica`=sum(Educación==5),Normalista=sum(Educación==6),`Técnica`=sum(Educación==7),
+            `Tecnológica`=sum(Educación==8),Universitario=sum(Educación==9),Especialización=sum(Educación==10),
+            Maestría=sum(Educación==11),Doctorado=sum(Educación==12))
+
+numsNivE <- c()
+for(i in 2:14){
+  numsNivE <- c(numsNivE,pull(cuat_NivEdad,i)) # Une datos numéricos de nivs de educ en un solo vector
+}
+
+pobsEdad <- c(sum(base_re$RangosEdad=="De 18 a 24 años"),sum(base_re$RangosEdad=="De 25 a 34 años"),
+              sum(base_re$RangosEdad=="De 35 a 44 años"),sum(base_re$RangosEdad=="De 45 a 54 años"),
+              sum(base_re$RangosEdad=="Mayor de 55 años"))
+
+numsNivE_porc <- round(numsNivE/pobsEdad*100,1)
+
+Edades <- rep(c("De 18 a 24 años","De 25 a 34 años","De 35 a 44 años","De 45 a 54 años",
+                       "Mayor de 55 años"),13)
+NivsE <- c(rep("Ninguna",5),rep("Preescolar",5),rep("Básica primaria",5),
+           rep("Básica secundaria",5),rep("Media académica",5),rep("Media técnica",5),
+           rep("Normalista",5),rep("Técnica",5),rep("Tecnológica",5),rep("Universitario",5),
+           rep("Especialización",5),rep("Maestría",5),rep("Doctorado",5))
+
+cuat_NE_all <- data.frame(Edades,NivsE,numsNivE_porc)
+
+cuat_NE_plot <- ggplot(cuat_NE_all, aes(fill=Edades,
+                                        y=numsNivE_porc, x=factor(NivsE,
+                                                                  levels = c("Ninguna","Preescolar","Básica primaria","Básica secundaria",
+                                                                             "Media académica","Media técnica","Normalista","Técnica","Tecnológica",
+                                                                             "Universitario","Especialización","Maestría","Doctorado")))) + 
+  geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.07) +
+  geom_text(family="serif",size = 3.5, position = position_stack(vjust = 0.5),label=ifelse(numsNivE_porc>10,paste0(round(numsNivE_porc,1),"%"),""))+
+  scale_fill_brewer(palette ="Pastel1") +
+  coord_flip()+
+  labs(x="Máximo nivel educativo alcanzado",y="Porcentaje del total de esa zona",
+       fill=stringr::str_wrap("Zona",12))
+
+
+
 
 
 
