@@ -71,6 +71,7 @@ sum(base_re$DOMINIO==2)/sum(!is.na(base_re$ID))*100 # Porcentaje Rural
 sum(base_re$P1864S1!=1010)/sum(!is.na(base_re$ID))*100 # Digital
 sum(base_re$P1865S1!=1010)/sum(!is.na(base_re$ID))*100 # Impreso
 
+sum(base_re$P1865S1!=1010&base_re$P1864S1!=1010)/sum(!is.na(base_re$ID))*100 # Ambos
 
 # ===== Sí/No Lectura en soportes ... por ZONA =====
 
@@ -199,10 +200,8 @@ ggplot(YNLec_all, aes(x=YN,y=porcs,fill=factor(Fill,levels=c("Rango de edad",
 
 # ===== DIGITAL =====
 
-# ##### Por EDAD #####
-
 base_RazNoLecDig <- base_re %>%
-  filter(!is.na(P1864S1)) %>% 
+  filter(P1864S1!=1010) %>% 
   select(RangosEdad,DOMINIO,P260,P4031S1A1,30,34:41,31:33) # Filtra personas que respondieron P1864
 
 razonesD <- c("Otras preferencias","Dinero","Salud","Pereza","No tiene dispositivos",
@@ -210,6 +209,19 @@ razonesD <- c("Otras preferencias","Dinero","Salud","Pereza","No tiene dispositi
               "Desinterés","Prefiere impreso","Otra")
 
 names(base_RazNoLecDig)[5:16] <- razonesD # Cambia nombres de las razones
+
+
+f_razonesD <- base_RazNoLecDig %>%
+  summarise(OtrasPrefs = sum(`Otras preferencias`==1), Dinero = sum(Dinero==1),
+            Salud = sum(Salud ==1), Pereza = sum(Pereza==1), Falta_dis = sum(`No tiene dispositivos`==1),
+            Duda = sum(`Duda qué leer`==1), Internet = sum(`Acceso a internet`==1),
+            Uso = sum(`No sabe usar dispositivos`==1),Tiempo = sum(Tiempo==1),
+            Desinteres=sum(Desinterés==1),Impreso=sum(`Prefiere impreso`==1),Otra=sum(Otra==1))
+
+f_razonesD <- f_razonesD/sum(base_RazNoLecDig$DOMINIO!=0)*100 # Frecuencia de las razones digital
+
+
+# ##### Por EDAD #####
 
 agrupaD <- base_RazNoLecDig %>% # Cuenta frecuencia de los rangos de edad en las razones
   group_by(RangosEdad) %>%
@@ -261,7 +273,7 @@ tres_plot_DigPorcs <- ggplot(tres_Dig, aes(fill=factor(RangosEdad,
   scale_fill_brewer(palette ="Set3") +
   geom_text(family="serif",size = 3.5, position = position_stack(vjust = 0.5),label=ifelse(porcsD>25,paste0(round(porcsD,1),"%"),""))+
   #scale_fill_manual(values=wes_palette("Royal2"))
-  labs(x="Razón por la que no lee digital",y="Porcentaje relativo por rango de edad",fill="Rango de Edad")
+  labs(x="Razones por las que no lee digital",y="Porcentaje relativo por rango de edad",fill="Rango de Edad")
 
 
 # Tendencia con la edad, más viejo/joven -> menos digital
@@ -307,7 +319,7 @@ tres_plot_DigZfrac <- ggplot(tres_DigZ, aes(fill=factor(DOMINIO,
   coord_flip()+
   scale_fill_brewer(palette ="Pastel1") +
   #scale_fill_manual(values=wes_palette("Royal2"))
-  labs(x="Razón por la que no lee digital",y="Porcentaje del total de personas de esa zona",fill="Zona") # Barras apiladas
+  labs(x="Razones por las que no lee digital",y="Porcentaje del total de personas de esa zona que no lee",fill="Zona") # Barras apiladas
 
 
 # Distribución de los que no leen digital por zona. No aporta mucho, se esperan mas urbs que rurs por los porcentajes de la muestra
@@ -322,17 +334,25 @@ sum(base_RazNoLecDig$DOMINIO==2)/sum(base_re$DOMINIO==2)*100 # Rural
 
 # ===== IMPRESO =====
 
-
-# ##### Por EDAD #####
-
 base_RazNoLecImp <- base_re %>%
-  filter(!is.na(P1865S1)) %>% 
+  filter(P1865S1!=1010) %>% 
   select(RangosEdad,DOMINIO,P260,P4031S1A1,42,44:51,43)
 
 razonesI <- c("Otras preferencias","Tiempo","Desinterés","Pereza","Dinero","Duda qué leer",
               "Salud","Acceso a material","Prefiere digital","Otra")
 
 names(base_RazNoLecImp)[5:14] <- razonesI # Cambia nombres de las razones
+
+f_razonesI <- base_RazNoLecImp %>%
+  summarise(OtrasPrefs = sum(`Otras preferencias`==1),Tiempo = sum(Tiempo==1),
+            Desinteres=sum(Desinterés==1),Pereza=sum(Pereza==1),Dinero = sum(Dinero==1),
+            Duda=sum(`Duda qué leer`==1),Salud=sum(Salud==1),Acceso=sum(`Acceso a material`==1),
+            Digital=sum(`Prefiere digital`==1),Otra=sum(Otra==1))
+
+f_razonesI <- f_razonesI/sum(base_RazNoLecImp$DOMINIO!=0)*100 # Frecuencia de las razones impreso
+
+
+# ##### Por EDAD #####
 
 agrupaI <- base_RazNoLecImp %>% # Cuenta frecuencia de los rangos de edad en las razones
   group_by(RangosEdad) %>%
@@ -382,7 +402,7 @@ tres_plot_ImpPorcs <- ggplot(tres_Imp, aes(fill=factor(RangosEdad,
   scale_fill_brewer(palette ="Set3") +
   geom_text(family="serif",size = 3.5, position = position_stack(vjust = 0.5),label=ifelse(porcsI>20,paste0(round(porcsI,1),"%"),""))+
   #scale_fill_manual(values=wes_palette("Royal2"))
-  labs(x="Razón por la que no lee impreso",y="Porcentaje relativo por rango de edad",fill="Rango de Edad") # Barras apiladas
+  labs(x="Razones por las que no lee impreso",y="Porcentaje relativo por rango de edad",fill="Rango de Edad") # Barras apiladas
 
 # Frecuencia edad
 
@@ -428,7 +448,7 @@ tres_plot_ImpZfrac <- ggplot(tres_ImpZ, aes(fill=factor(DOMINIO,
   coord_flip()+
   scale_fill_brewer(palette ="Pastel1") +
   #scale_fill_manual(values=wes_palette("Royal2"))
-  labs(x="Razón por la que no lee impreso",y="Porcentaje del total de personas de esa zona",fill="Zona") # Barras apiladas
+  labs(x="Razones por las que no lee impreso",y="Porcentaje del total de personas de esa zona que no lee",fill="Zona") # Barras apiladas
 
 
 # Distribución de los que no leen impreso por zona. NO aporta mucho, 90% urbano y 10% rural, se espera más urb que rur
@@ -536,6 +556,19 @@ cuat_plot <- ggplot(cuat_all, aes(fill=factor(punts,levels=6:0),
   labs(x="Máximo nivel educativo alcanzado",y="Porcentaje relativo por puntaje",
        fill=stringr::str_wrap("Puntaje de lectura en la infancia",12))
 
+# Frecuencias
+
+view(f_punts) <- cuat_punts %>% 
+  freq(Puntaje,report.nas=FALSE)
+
+mean(pull(cuat_punts[,4]))
+median(pull(cuat_punts[,4]))
+
+punts_prom_edad <- cuat_punts %>% 
+  group_by(RangosEdad) %>% 
+  summarise(mean(Puntaje))
+
+
 # ===== Por ZONA =====
 #Máximo nivel educativo por zona.
 
@@ -552,27 +585,16 @@ for(i in 2:14){
   numsNivZ <- c(numsNivZ,pull(cuat_NivZona,i)) # Une datos numéricos de nivs de educ en un solo vector
 }
 
-numsNivZ_porc <- round(numsNivZ/c(sum(base_re$DOMINIO==1&base_re$RangosEdad!="Menor de 18 años"),
-                                  sum(base_re$DOMINIO==2&base_re$RangosEdad!="Menor de 18 años"))*100,1) # Calcula fracción que representa del total de esa zona
+numsNivZ_porc <- round(numsNivZ/c(sum(base_NiñezEdu$DOMINIO==1),
+                                  sum(base_NiñezEdu$DOMINIO==2))*100,1) # Calcula fracción que representa del total de esa zona
 
-for(i in 0:12){
-  t <- numsNivZ_porc[2*i+2]
-  numsNivZ_porc[2*i+2] <- numsNivZ_porc[2*i+1]
-  numsNivZ_porc[2*i+1] <- t
-}
-
-doms <- rep(c(2:1),13)
+doms <- rep(c(1:2),13)
 NivsZ <- c(rep("Ninguna",2),rep("Preescolar",2),rep("Básica primaria",2),
              rep("Básica secundaria",2),rep("Media académica",2),rep("Media técnica",2),
              rep("Normalista",2),rep("Técnica",2),rep("Tecnológica",2),rep("Universitario",2),
              rep("Especialización",2),rep("Maestría",2),rep("Doctorado",2))
 
 cuat_NZ_all <- data.frame(doms,NivsZ,numsNivZ_porc)
-
-library(plyr)
-cuat_NZ_all <- ddply(cuat_NZ_all, .(NivsZ),
-                   transform, pos = cumsum(numsNivZ_porc) - (0.5 * numsNivZ_porc))
-detach("package:plyr",unload = T)
 
 cuat_NZ_plot <- ggplot(cuat_NZ_all, aes(fill=factor(doms,
                                                     levels = c("1","2"),labels = c("Urbana","Rural")),
@@ -581,8 +603,7 @@ cuat_NZ_plot <- ggplot(cuat_NZ_all, aes(fill=factor(doms,
                        "Media académica","Media técnica","Normalista","Técnica","Tecnológica",
                        "Universitario","Especialización","Maestría","Doctorado")))) + 
   geom_bar(position=position_stack(reverse=F), stat="identity", colour="black",size=.07) +
-  geom_text(data=cuat_NZ_all,aes(x=NivsZ,y=pos,label =ifelse(numsNivZ_porc>3.5,
-                                                               paste0(numsNivZ_porc,"%"),"")), family="serif",size = 3.5) +
+  geom_text(family="serif",size = 3.5, position = position_stack(vjust = 0.5),label=ifelse(numsNivZ_porc>5,paste0(round(numsNivZ_porc,1),"%"),""))+
   scale_fill_brewer(palette ="Pastel1") +
   coord_flip()+
   #scale_fill_manual(values=wes_palette("Royal2"))
@@ -639,7 +660,7 @@ cuat_NE_plot <- ggplot(cuat_NE_all, aes(fill=Edades,
 
 
 
-# ---------- Punto 5 ----------
+# -------------------- Punto 5 ----------
 
 base_TiLecEst <- base_re %>% 
   filter(P4031S1A1!=1010 & P4031S1A1!=0 & P4031S1A1!=9) %>% #1044 excluidos por estrato 0 o 9
