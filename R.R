@@ -830,7 +830,7 @@ YNPorcs <- YNnums/pobsEstrato*100
 
 cinco_YNEst_all <- data.frame(YNEs,YNpregs,YN,YNnums,YNPorcs)
 
-cinco_plot_YNEstPorc <- ggplot(cinco_YNEst_all, aes(x=YN,y=YNPorcs,fill=factor(YNEs,levels=c(1:6)))) + 
+cinco_plot_YNEstPorc <- ggplot(cinco_YNEst_all, aes(x=YN,y=YNPorcs,fill=factor(YNEs,levels=c(6:1)))) + 
   geom_bar(stat='identity') + 
   #scale_fill_brewer(palette ="Set3",direction=-1) +
   scale_fill_manual(values=c("#74ADD1","#ABD9E9", "#E0F3F8", "#D9EF8B","#A6D96A","#66BD63"))+
@@ -844,11 +844,20 @@ cinco_plot_YNEstPorc <- ggplot(cinco_YNEst_all, aes(x=YN,y=YNPorcs,fill=factor(Y
 
 
 
+# ###### FRECUENCIAS YN ######
 
 
+Sí <- c()
+No <- c()
+for (i in 3:7){
+  Sí <- c(Sí,sum(base_TiLecEst[,i]!=1010))
+  No <- c(No,sum(base_TiLecEst[,i]==1010))
+}
 
+YNpregs_ <- c("Redes sociales","Periódicos impresos","Documentos académicos impresos",
+              "Documentos académicos digitales","Páginas web")
 
-
+cinco_frecs <- data.frame(YNpregs_,"Sí"=Sí/nrow(base_TiLecEst)*100,"No"=No/nrow(base_TiLecEst)*100)
 
 
 
