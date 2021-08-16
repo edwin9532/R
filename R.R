@@ -8,8 +8,8 @@ library(dplyr)
 library(summarytools)
 library(ggplot2)
 
-library(extrafont)
-y
+#library(extrafont)
+#y
 font_import()
 loadfonts(device = "win")
 
@@ -558,7 +558,7 @@ cuat_plot <- ggplot(cuat_all, aes(fill=factor(punts,levels=6:0),
 
 # Frecuencias
 
-view(f_punts) <- cuat_punts %>% 
+f_punts <- cuat_punts %>% 
   freq(Puntaje,report.nas=FALSE)
 
 mean(pull(cuat_punts[,4]))
@@ -893,7 +893,6 @@ base_LibsLeSí <-base_LibsLe %>%
 mean(base_LibsLeSí$N_libros)
 median(base_LibsLeSí$N_libros)
 mean(base_LibsLeSí$N_Imp)
-median(base_LibsLeSí$N_Imp)
 mean(base_LibsLeSí$N_Dig)
 mean(base_LibsLeSí$N_Gusto)
 mean(base_LibsLeSí$N_Trabajo)
@@ -908,8 +907,32 @@ sum(base_LibsLeSí$N_Gusto)/sum(base_LibsLeSí$N_libros)
 
 # Bayes?
 
+Libsnums <- c()
+for(i in 5:8){
+  Libsnums <- c(Libsnums,pull(base_LibsLeSí,i))
+}
+
+noms <- c(rep("Impresos",count(base_LibsLeSí)),rep("Digitales",count(base_LibsLeSí)),
+          rep("Por gusto",count(base_LibsLeSí)),rep("Por trabajo o estudio",count(base_LibsLeSí)))
 
 
+db_Libs <- data.frame(noms,Libsnums)
+
+ggplot(db_Libs, aes(x=factor(noms,levels=c("Impresos","Digitales","Por gusto",
+                                           "Por trabajo o estudio")), y=Libsnums, fill=noms)) + 
+  #geom_violin(width=1) +
+  geom_boxplot() +
+  coord_cartesian(ylim = c(-1, 8.65))+
+  theme(legend.position="none") +
+  labs(y="Cantidad de libros",x="¿Cuántos libros ... leyó en los últimos 12 meses?")+
+  scale_fill_brewer(palette="Pastel2")
+
+
+sum(base_LibsLeSí$N_Gusto==2)
+
+
+
+sum(base_LibsLeSí[,6]==4)
 
 # ===== Sí/No =====
 
@@ -1147,7 +1170,7 @@ seis_N_Edad <- base_LibsLe %>%
 
 # ===== Imp vs Dig =====
 
-seis_IvD <- base_LibsLe %>% 
+seis_IvD <- base_LibsLeSí %>% 
   select(N_Imp,N_Dig)
 
 DI <- c(rep("Impreso",count(seis_IvD)[1,1]),rep("Digital",count(seis_IvD)[1,1]))
@@ -1157,10 +1180,12 @@ for(i in 1:2){
 }
 seis_IvD <- data.frame(DI,nums)
 
+library(viridis)
+
 ggplot(seis_IvD, aes(x=DI,y=nums,fill=DI)) +
   geom_violin(width=3) +
   geom_boxplot(width=.5, color="gray") +
-  scale_fill_viridis(discrete = TRUE) +
+  #scale_fill_viridis(discrete = TRUE) +
   theme(plot.title = element_text(size=11)) +
   ggtitle("A Violin wrapping a boxplot") +
   coord_cartesian(ylim = c(-1, 12))+
@@ -1172,31 +1197,13 @@ ggplot(seis_IvD, aes(x=DI, y=nums, fill=DI)) +
   theme(legend.position="none") +
   scale_fill_brewer(palette="BuPu")
 
-
-
-ggplot(seis_IvD, aes(x=DI,y=nums)) +
-  geom_density(stat="density")
-  scale_fill_viridis(discrete = TRUE) +
-  theme(plot.title = element_text(size=11)) +
-  ggtitle("A Violin wrapping a boxplot") +
-  xlab("")
-
-
-
-
-
-
-
-
-
-
   
   
 # -------------------- Punto 7 --------------------
   
 base_LecFrec <- base_re %>% 
   filter(P5381!=1010,P4031S1A1!=1010&P4031S1A1!=0&P4031S1A1!=9) %>% 
-  select(Digital=P1858S1,Impreso=P5380S1)
+  select(RangosEdad = RangosEdad,Estrato=P4031S1A1,Digital=P1858S1,Impreso=P5380S1)
   
 LecFrecD <- base_LecFrec %>% 
   group_by(Digital) %>% 
@@ -1224,12 +1231,66 @@ siete_plot <- ggplot(siete_LecFrec, aes(x=reorder(frec,porcs),y=porcs,label=ifel
   labs(x="¿Con qué frecuencia leyó libros en formato ...?",y="Porcentaje del total")+
   facet_wrap(~Formato,scales = "free_x")
 
+#===== PUNTAJES =====
+
+base_LecFrecP <- base_LecFrec
+
+for(j in 3:4){
+  for(i in 1:count(base_LecFrecP)[1,1]){
+    if (base_LecFrecP[i,j]==1){
+      base_LecFrecP[i,j] <- 6
+      next}
+    if (base_LecFrecP[i,j]==2){
+      base_LecFrecP[i,j] <- 5
+      next}
+    if (base_LecFrecP[i,j]==3){
+      base_LecFrecP[i,j] <- 4
+      next}
+    if (base_LecFrecP[i,j]==4){
+      base_LecFrecP[i,j] <- 3
+      next}
+    if (base_LecFrecP[i,j]==5){
+      base_LecFrecP[i,j] <- 2
+      next}
+    if (base_LecFrecP[i,j]==6){
+      base_LecFrecP[i,j] <- 1
+      next}}}
+
+PuntLecFrecI <- base_LecFrecP %>% 
+  filter(Impreso!=1010) %>% 
+  summarise(RangosEdad,Estrato,Impreso)
+
+mean(PuntLecFrecI$Impreso)
+
+PuntLecFrecIE <- PuntLecFrecI %>% 
+  group_by(RangosEdad) %>% 
+  summarise(mean(Impreso))
+
+PuntLecFrecIEs <- PuntLecFrecI %>% 
+  group_by(Estrato) %>% 
+  summarise(mean(Impreso))
 
 
-    
-    
-  
-  
-  
-  
-  
+
+
+
+PuntLecFrecD <- base_LecFrecP %>% 
+  filter(Digital!=1010) %>% 
+  summarise(RangosEdad,Estrato,Digital)
+
+mean(PuntLecFrecD$Digital)
+
+PuntLecFrecDE <- PuntLecFrecD %>% 
+  group_by(RangosEdad) %>% 
+  summarise(mean(Digital))
+
+PuntLecFrecDEs <- PuntLecFrecD %>% 
+  group_by(Estrato) %>% 
+  summarise(mean(Digital))
+
+
+
+
+
+
+
